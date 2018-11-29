@@ -13,3 +13,5 @@ Please note that both the source code and the wiring information comes without a
 but everything is experimental and largely untested.
 
 See source code for wiring information.
+
+![Image of assembled robot](assets/robot.jpg)
