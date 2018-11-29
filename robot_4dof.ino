@@ -77,6 +77,7 @@ class Axis
     Axis (const char* name, int joystick_port, int servo_port, int initial_pos, int min_pos, int max_pos);
 
     void setup ();
+    void calibrate ();
     void reset ();
     void process ();
 
@@ -126,6 +127,14 @@ void Axis::setup ()
   // Calibrate by declaring the current joystick position as null position
   _middle_pos = analogRead (_joystick_port);
 }
+
+/*
+ * Calibrate joystick middle position
+ */
+ void Axis::calibrate ()
+ {
+  _middle_pos = analogRead (_joystick_port);  
+ }
 
 /*
  * Reset axis to home position
@@ -202,10 +211,11 @@ bool Button::is_triggered ()
 // to robot.
 Axis base ("Base", Port::joystick_2_h, Port::servo_base,  90, 70, 140);
 Axis arm1 ("Arm1", Port::joystick_1_h, Port::servo_arm1,  20,  0,  90);
-Axis arm2 ("Arm2", Port::joystick_1_v, Port::servo_arm2,  90,  0, 180);
+Axis arm2 ("Arm2", Port::joystick_1_v, Port::servo_arm2,  90, 60, 130);
 Axis hand ("Hand", Port::joystick_2_v, Port::servo_hand, 100, 80, 130);
 
-Button button (Port::button_2);
+Button button_calibrate (Port::button_1);
+Button button_home (Port::button_2);
 
 Axis* axes[] = {&base, &arm1, &arm2, &hand, nullptr};
 
@@ -224,7 +234,15 @@ void setup ()
 
 void loop ()
 {
-  if (button.is_triggered ())
+  if (button_calibrate.is_triggered ())
+  {
+    Serial.println ("* CALIBRATE *");
+    
+    for (int i=0; axes[i] != nullptr; ++i)
+      axes[i]->calibrate ();
+  }
+  
+  if (button_home.is_triggered ())
   {
     Serial.println ("* HOME *");
     
