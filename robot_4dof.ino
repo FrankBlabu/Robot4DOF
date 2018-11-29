@@ -30,13 +30,18 @@
 // Configuration
 //#*********************************************************************************
 
+#undef DEBUG_POSITION
+//#define DEBUG_POSITION
+
 /*
  * General configuration
  */
 namespace Configuration
 {
-  // Servo step width
-  static const int step_width = 10;
+  // Maximum servo step width in degree if the joystick is pulled to max.
+  static const int step_width = 5;
+
+  // Assumed noise of joystick position in input steps (0, 1024)
   static const int joystick_noise = 10;
 }
 
@@ -106,6 +111,9 @@ class Axis
  * @param joystick_port Analog input port which controls the axis
  * @param servo_port    Digital (PWM) port the servo is connected to
  * @param initial_pos   Initial servo position value in degree (0, 180)
+ * @param min_pos       Minimum possible servo position in degree
+ * @param max_pos       Maximum possible servo position in degree
+ * @param direction     Set to NEG to invert the joystick
  */
 Axis::Axis (const char* name, int joystick_port, int servo_port, int initial_pos, 
             int min_pos, int max_pos, Direction direction)
@@ -132,8 +140,7 @@ void Axis::setup ()
   
   _servo.attach (_servo_port);  
 
-  // Calibrate by declaring the current joystick position as null position
-  _middle_pos = analogRead (_joystick_port);
+  calibrate ();
 }
 
 /*
@@ -141,6 +148,7 @@ void Axis::setup ()
  */
  void Axis::calibrate ()
  {
+  // Calibrate by declaring the current joystick position as null position
   _middle_pos = analogRead (_joystick_port);  
  }
 
@@ -180,6 +188,7 @@ void Axis::process ()
   
   _current_pos = constrain (_current_pos, _min_pos, _max_pos);
 
+#ifdef DEBUG_POSITION
   // Print some debugging information
   Serial.print (_name);
   Serial.print (": ");
@@ -190,6 +199,7 @@ void Axis::process ()
   Serial.print ("/P ");
   Serial.print (_current_pos);
   Serial.print ("---");
+#endif
   
   _servo.write (_current_pos);
 }
@@ -260,7 +270,9 @@ void loop ()
 {
   if (button_calibrate.is_triggered ())
   {
+#ifdef DEBUG_POSITION
     Serial.println ("* CALIBRATE *");
+#endif
     
     for (int i=0; axes[i] != nullptr; ++i)
       axes[i]->calibrate ();
@@ -268,7 +280,9 @@ void loop ()
   
   if (button_home.is_triggered ())
   {
+#ifdef DEBUG_POSITION
     Serial.println ("* HOME *");
+#endif
     
     for (int i=0; axes[i] != nullptr; ++i)
       axes[i]->reset ();
@@ -278,11 +292,14 @@ void loop ()
   for (int i=0; axes[i] != nullptr; ++i)
     axes[i]->process ();
 
+#ifdef DEBUG_POSITION
   Serial.print (digitalRead (Port::button_1) == HIGH ? "high" : "low");
   Serial.print ("---");
   Serial.print (digitalRead (Port::button_2) == HIGH ? "high" : "low");
   Serial.print ("---");
 
   Serial.println ();
+#endif
+  
   delay (15);
 }
