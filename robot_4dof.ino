@@ -36,7 +36,8 @@
 namespace Configuration
 {
   // Servo step width
-  static const int step_width = 5;
+  static const int step_width = 10;
+  static const int joystick_noise = 10;
 }
 
 /*
@@ -74,7 +75,11 @@ namespace Port
 class Axis
 {
   public:
-    Axis (const char* name, int joystick_port, int servo_port, int initial_pos, int min_pos, int max_pos);
+    enum class Direction { POS, NEG };
+  
+  public:
+    Axis (const char* name, int joystick_port, int servo_port, int initial_pos, 
+          int min_pos, int max_pos, Direction direction);
 
     void setup ();
     void calibrate ();
@@ -91,6 +96,7 @@ class Axis
     int _current_pos;
     int _min_pos;
     int _max_pos;
+    Direction _direction;
 };
 
 /*
@@ -101,7 +107,8 @@ class Axis
  * @param servo_port    Digital (PWM) port the servo is connected to
  * @param initial_pos   Initial servo position value in degree (0, 180)
  */
-Axis::Axis (const char* name, int joystick_port, int servo_port, int initial_pos, int min_pos, int max_pos)
+Axis::Axis (const char* name, int joystick_port, int servo_port, int initial_pos, 
+            int min_pos, int max_pos, Direction direction)
 : _name          (name),
   _servo         (),
   _joystick_port (joystick_port),
@@ -110,7 +117,8 @@ Axis::Axis (const char* name, int joystick_port, int servo_port, int initial_pos
   _middle_pos    (1024 / 2),
   _current_pos   (initial_pos),
   _min_pos       (min_pos),
-  _max_pos       (max_pos)
+  _max_pos       (max_pos),
+  _direction     (direction)
 {
 }
 
@@ -152,8 +160,24 @@ void Axis::process ()
 {
   // Map analog joystick value (0, 1024) into the range (-step_width, +step_width). That is the step width
   // in degree to be added to the current servo position.
-  int step = map (_middle_pos - analogRead (_joystick_port), -512, 512, -Configuration::step_width, +Configuration::step_width);
-  _current_pos += step;
+  int value = _middle_pos - analogRead (_joystick_port);
+  if (abs (value) < Configuration::joystick_noise)
+    value = 0;
+  
+  int step = map (value, 
+                  -512 + Configuration::joystick_noise, 512 - Configuration::joystick_noise,
+                  -Configuration::step_width, +Configuration::step_width);
+
+  switch (_direction)
+  {
+    case Direction::POS:
+      _current_pos += step;
+      break;                
+    case Direction::NEG:
+      _current_pos -= step;
+      break;                
+  }
+  
   _current_pos = constrain (_current_pos, _min_pos, _max_pos);
 
   // Print some debugging information
@@ -209,10 +233,10 @@ bool Button::is_triggered ()
 
 // Axis setup. The initial axis values are heuristics which may differ from robot
 // to robot.
-Axis base ("Base", Port::joystick_2_h, Port::servo_base,  90, 70, 140);
-Axis arm1 ("Arm1", Port::joystick_1_h, Port::servo_arm1,  20,  0,  90);
-Axis arm2 ("Arm2", Port::joystick_1_v, Port::servo_arm2,  90, 60, 130);
-Axis hand ("Hand", Port::joystick_2_v, Port::servo_hand, 100, 80, 130);
+Axis base ("Base", Port::joystick_2_h, Port::servo_base,  90, 70, 140, Axis::Direction::POS);
+Axis arm1 ("Arm1", Port::joystick_1_h, Port::servo_arm1,  20,  0,  90, Axis::Direction::POS);
+Axis arm2 ("Arm2", Port::joystick_1_v, Port::servo_arm2,  90, 60, 130, Axis::Direction::NEG);
+Axis hand ("Hand", Port::joystick_2_v, Port::servo_hand, 100, 80, 130, Axis::Direction::NEG);
 
 Button button_calibrate (Port::button_1);
 Button button_home (Port::button_2);
