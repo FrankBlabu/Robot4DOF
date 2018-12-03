@@ -51,21 +51,21 @@ namespace Configuration
 namespace Port
 {  
   // Digital (PWM) output ports
-  static const int servo_base = 5;
-  static const int servo_arm1 = 9;
-  static const int servo_arm2 = 10;
-  static const int servo_hand = 3;
+  static const int servo_base = 3;
+  static const int servo_arm1 = 5;
+  static const int servo_arm2 = 6;
+  static const int servo_hand = 9;
 
   // Analog input ports
-  static const int joystick_1_h = A4;
-  static const int joystick_1_v = A5;
+  static const int joystick_1_h = A1;
+  static const int joystick_1_v = A0;
 
   static const int joystick_2_h = A3;
   static const int joystick_2_v = A2;
 
   // Digital inputs
-  static const int button_1 = 13;
-  static const int button_2 = 12;
+  static const int button_1 = 10;
+  static const int button_2 = 11;
 };
 
 
@@ -244,8 +244,8 @@ bool Button::is_triggered ()
 // Axis setup. The initial axis values are heuristics which may differ from robot
 // to robot.
 Axis base ("Base", Port::joystick_2_h, Port::servo_base,  90, 70, 140, Axis::Direction::POS);
-Axis arm1 ("Arm1", Port::joystick_1_h, Port::servo_arm1,  20,  0,  90, Axis::Direction::POS);
-Axis arm2 ("Arm2", Port::joystick_1_v, Port::servo_arm2,  90, 60, 130, Axis::Direction::NEG);
+Axis arm1 ("Arm1", Port::joystick_1_v, Port::servo_arm1,  20,  0,  90, Axis::Direction::POS);
+Axis arm2 ("Arm2", Port::joystick_1_h, Port::servo_arm2,  90, 60, 130, Axis::Direction::NEG);
 Axis hand ("Hand", Port::joystick_2_v, Port::servo_hand, 100, 80, 130, Axis::Direction::NEG);
 
 Button button_calibrate (Port::button_1);
