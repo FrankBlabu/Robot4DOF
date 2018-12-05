@@ -41,6 +41,9 @@ namespace Configuration
   // Maximum servo step width in degree if the joystick is pulled to max.
   static const int step_width = 5;
 
+  // Servo delay in milliseconds between move actions
+  static const int servo_delay = 30;
+
   // Assumed noise of joystick position in input steps (0, 1024)
   static const int joystick_noise = 10;
 }
@@ -66,6 +69,9 @@ namespace Port
   // Digital inputs
   static const int button_1 = 10;
   static const int button_2 = 11;
+
+  // LEDs
+  static const int led = LED_BUILTIN;
 };
 
 
@@ -89,7 +95,12 @@ class Axis
     void setup ();
     void calibrate ();
     void reset ();
-    void process ();
+    bool process ();
+
+    void setLink (Axis* axis) { _link = axis; }
+
+  protected:
+    void move (int step);
 
   private:
     const char* _name;
@@ -102,6 +113,8 @@ class Axis
     int _min_pos;
     int _max_pos;
     Direction _direction;
+
+    Axis* _link;
 };
 
 /*
@@ -126,7 +139,8 @@ Axis::Axis (const char* name, int joystick_port, int servo_port, int initial_pos
   _current_pos   (initial_pos),
   _min_pos       (min_pos),
   _max_pos       (max_pos),
-  _direction     (direction)
+  _direction     (direction),
+  _link          (nullptr)
 {
 }
 
@@ -141,6 +155,7 @@ void Axis::setup ()
   _servo.attach (_servo_port);  
 
   calibrate ();
+  reset ();
 }
 
 /*
@@ -164,23 +179,38 @@ void Axis::setup ()
 /*
  * Process single step
  */
-void Axis::process ()
+bool Axis::process ()
 {
   // Map analog joystick value (0, 1024) into the range (-step_width, +step_width). That is the step width
   // in degree to be added to the current servo position.
   int value = _middle_pos - analogRead (_joystick_port);
-  if (abs (value) < Configuration::joystick_noise)
-    value = 0;
   
   int step = map (value, 
                   -512 + Configuration::joystick_noise, 512 - Configuration::joystick_noise,
                   -Configuration::step_width, +Configuration::step_width);
 
+  if (abs (value) < Configuration::joystick_noise)
+    step = 0;
+
+  move (step);
+
+  if (_link)
+    _link->move (step);
+
+  return step != 0;
+}
+
+/*
+ * Move axis for a given step
+ */
+void Axis::move (int step)
+{
   switch (_direction)
   {
     case Direction::POS:
       _current_pos += step;
       break;                
+      
     case Direction::NEG:
       _current_pos -= step;
       break;                
@@ -243,7 +273,7 @@ bool Button::is_triggered ()
 
 // Axis setup. The initial axis values are heuristics which may differ from robot
 // to robot.
-Axis base ("Base", Port::joystick_2_h, Port::servo_base,  90, 70, 140, Axis::Direction::POS);
+Axis base ("Base", Port::joystick_2_h, Port::servo_base,  90,  0, 180, Axis::Direction::POS);
 Axis arm1 ("Arm1", Port::joystick_1_v, Port::servo_arm1,  20,  0,  90, Axis::Direction::POS);
 Axis arm2 ("Arm2", Port::joystick_1_h, Port::servo_arm2,  90, 60, 130, Axis::Direction::NEG);
 Axis hand ("Hand", Port::joystick_2_v, Port::servo_hand, 100, 80, 130, Axis::Direction::NEG);
@@ -255,12 +285,18 @@ Axis* axes[] = {&base, &arm1, &arm2, &hand, nullptr};
 
 void setup ()
 {
+  arm1.setLink (&arm2);
+  
   for (int i=0; axes[i] != nullptr; ++i)
     axes[i]->setup ();
 
   // Digital input setup
   pinMode (Port::button_1, INPUT_PULLUP);
   pinMode (Port::button_2, INPUT_PULLUP);
+
+  // LED port setup
+  pinMode (Port::led, OUTPUT);
+  digitalWrite (Port::led, LOW);
 
   Serial.begin (9600);
 }
@@ -289,8 +325,12 @@ void loop ()
   }
 
   // Loop and adapt all axes
+  bool moved = false;
+  
   for (int i=0; axes[i] != nullptr; ++i)
-    axes[i]->process ();
+    moved |= axes[i]->process ();
+
+  digitalWrite (Port::led, moved);
 
 #ifdef DEBUG_POSITION
   Serial.print (digitalRead (Port::button_1) == HIGH ? "high" : "low");
@@ -301,5 +341,5 @@ void loop ()
   Serial.println ();
 #endif
   
-  delay (15);
+  delay (Configuration::servo_delay);
 }
