@@ -275,7 +275,7 @@ bool Button::is_triggered ()
 // to robot.
 Axis base ("Base", Port::joystick_2_h, Port::servo_base,  90,  0, 180, Axis::Direction::POS);
 Axis arm1 ("Arm1", Port::joystick_1_v, Port::servo_arm1,  20,  0,  90, Axis::Direction::POS);
-Axis arm2 ("Arm2", Port::joystick_1_h, Port::servo_arm2,  90, 60, 130, Axis::Direction::NEG);
+Axis arm2 ("Arm2", Port::joystick_1_h, Port::servo_arm2,  90, 30, 180, Axis::Direction::NEG);
 Axis hand ("Hand", Port::joystick_2_v, Port::servo_hand, 100, 80, 130, Axis::Direction::NEG);
 
 Button button_calibrate (Port::button_1);
